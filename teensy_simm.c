@@ -1,9 +1,5 @@
 /*
- * Teensy OLED demo program.
- *
- * Works with Teensy 2.0 connected to an SSD1780-driven 128x32 display
- * - specifically a "Geekcreit 0.91 Inch 128x32 IIC I2C Blue OLED LCD
- * Display DIY Module"
+ * Teensy SIMM test demo program
  *
  * (C) 2021 Simon Frankau
  */
@@ -38,6 +34,84 @@ static inline void cpu_prescale(char i)
 }
 
 ////////////////////////////////////////////////////////////////////////
+// SIMM control.
+
+// Control lines all on Port D.
+#define CONTROL    PORTD
+#define CONTROL_EN DDRD
+static const char RAS = 1;
+static const char CAS = 2;
+static const char WE  = 4;
+
+// Data lines are B0-3.
+#define DATA    PORTB
+#define DATA_EN DDRB
+static const char D_SHIFT = 0;
+// Address lines are F4-7;
+#define ADDR    PORTF
+#define ADDR_EN DDRF
+static const char A_SHIFT = 4;
+
+void simm_init(void)
+{
+    // RAS, CAS and WE are all active low, so set them high...
+    CONTROL |= RAS | CAS | WE;
+    // And drive them.
+    CONTROL_EN |= RAS | CAS | WE;
+
+    // Drive address lines.
+    ADDR_EN |= 0x0f << A_SHIFT;
+    // Do not drive data lines.
+    DATA_EN &= ~(0x0f << D_SHIFT);
+}
+
+void simm_write(char addr, char val)
+{
+    char row = (addr >> 4) & 0x0f;
+    char col = addr & 0x0f;
+
+    // Write row.
+    ADDR = row << A_SHIFT;
+    CONTROL &= ~RAS;
+
+    // Set data.
+    DATA = val << D_SHIFT;
+    DATA_EN |= 0x0f << D_SHIFT;
+    CONTROL &= ~WE;
+
+    // Write col.
+    ADDR = col << A_SHIFT;
+    CONTROL &= ~CAS;
+
+    // Release RAS and CAS first, then data.
+    CONTROL |= RAS | CAS;
+    DATA_EN &= ~(0x0f << D_SHIFT);
+    CONTROL |= WE;
+}
+
+char simm_read(char addr)
+{
+    char row = (addr >> 4) & 0x0f;
+    char col = addr & 0x0f;
+
+    // Write row.
+    ADDR = row << A_SHIFT;
+    CONTROL &= ~RAS;
+
+    // Write col.
+    ADDR = col << A_SHIFT;
+    CONTROL &= ~CAS;
+
+    // Read the data.
+    char val = (DATA >> D_SHIFT) & 0x0f;
+
+    // Release RAS and CAS first.
+    CONTROL |= RAS | CAS;
+
+    return val;
+}
+
+////////////////////////////////////////////////////////////////////////
 // LED
 //
 
@@ -57,49 +131,8 @@ static inline void led_off(void)
 }
 
 ////////////////////////////////////////////////////////////////////////
-// Low-level I2C config
-//
-
-// I2C on D0/D1: SCL on D0, SDA on D1
-static const char SCL = 0;
-static const char SDA = 1;
-
-static void i2c_init(void)
-{
-    // In I2C the lines float high and are actively pulled low, so we
-    // set them to output zero, and enable/disable driving it low.
-
-    // SCL
-    DDRD &= ~(1 << SCL);
-    PORTD &= ~(1 << SCL);
-    // SDA
-    DDRD &= ~(1 << SDA);
-    PORTD &= ~(1 << SDA);
-}
-
-static inline void i2c_release(char pin)
-{
-    DDRD &= ~(1 << pin);
-}
-
-static inline void i2c_pulldown(char pin)
-{
-    DDRD |= 1 << pin;
-}
-
-static inline char i2c_read(char pin)
-{
-    return PIND & (1 << pin);
-}
-
-
-////////////////////////////////////////////////////////////////////////
 // And the main program itself...
 //
-
-char const message_1[] = "My little ssd1306+teensy 2.0 demo. ";
-char const message_2[] = "Look... bendy text! :) ";
-char const message_3[] = "Wobble!";
 
 int main(void)
 {
@@ -112,6 +145,7 @@ int main(void)
     // Don't forget to sync this with F_CPU in the Makefile.
     cpu_prescale(CPU_250kHz);
     led_init();
+    simm_init();
 
     // Initialise USB for debug, but don't wait.
     usb_init();
@@ -122,5 +156,12 @@ int main(void)
         _delay_ms(250);
         led_off();
         print("Boop\n");
+        simm_write(0, 3);
+        simm_write(1, 10);
+        char r1 = simm_read(0);
+        char r2 = simm_read(1);
+        phex(r1);
+        phex(r2);
+        print("\n");
     }
 }

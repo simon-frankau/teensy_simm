@@ -1,8 +1,28 @@
 # Managing a SIMM from a Teensy 2.0
 
-## TODO
+## What?
 
-Yeah, TODO all the docs.
+I have never built a circuit with DRAM before, and it's on my bucket
+list to onstruct a 68K-based Mac clone, which would use DRAM as its
+main memory. So, time to experiment with DRAM, and more specifically
+with 30-pin SIMMs, just like I used to have in my PC of old.
+
+The aim here is really just to exercise the DRAM functionality, play
+with refresh cycles, etc.
+
+## Software tooling
+
+Same blurb as in my `teensy_oled` repo that I've copied the basics
+from:
+
+As I'm developing on a Mac, I installed [Crosspack
+AVR](https://www.obdev.at/products/crosspack/index.html). I'm using
+`[teensy_loader_cli](https://github.com/PaulStoffregen/teensy_loader_cli)`
+to program the Teensy, and
+`[hid_listen](https://www.pjrc.com/teensy/hid_listen.html)` from
+pjrc.com to supply debug output. The utilities source and Makefile
+come from pjrc's ["blinky"
+example](https://www.pjrc.com/teensy/blinky.zip).
 
 ## Hardware configuration
 
