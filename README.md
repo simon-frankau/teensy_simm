@@ -41,12 +41,12 @@ example](https://www.pjrc.com/teensy/blinky.zip).
 | 11    | A4    | Address 4             | GND        |
 | 12    | A5    | Address 5             | GND        |
 | 13    | DQ3   | Data 3                | Pull-up    |
-| 14    | A6    | Address 6             | GND        |
-| 15    | A7    | Address 7             | F7         |
+| 14    | A6    | Address 6             | F7         |
+| 15    | A7    | Address 7             | F6         |
 | 16    | DQ4   | Data 4                | B3         |
-| 17    | A8    | Address 8             | F6         |
-| 18    | A9    | Address 9             | F5         |
-| 19    | A10   | Address 10            | F4         |
+| 17    | A8    | Address 8             | F5         |
+| 18    | A9    | Address 9             | F4         |
+| 19    | A10   | Address 10            | GND        |
 | 20    | DQ5   | Data 5                | B2         |
 | 21    | /WE   | Write Enable          | D2         |
 | 22    | GND   | Ground                | GND        |
@@ -59,13 +59,13 @@ example](https://www.pjrc.com/teensy/blinky.zip).
 | 29    | DP    | Data Parity In        | Pull-up    |
 | 30    | VCC   | +5 VDC                | VCC        |
 
-Only wiring up DQ4-DQ7, and A7-A10. Testing that the thing works in
+Only wiring up DQ4-DQ7, and A6-A9. Testing that the thing works in
 principle, don't need to actually access the full memory. Why the
 higher pins? They're the ones nearer the Teensy, so I can use more of
 the shorter wires. :)
 
-I avoided wiring up A11, since that's only used by the largest of
-SIMMs.
+I avoided wiring up A11/A10, since my test SIMM is a 1MB (parity!)
+SIMM, populated with 2x 422400-70, 1x 421000-70 DRAM chips. SIMMs.
 
 Inverting the table for the Teensy's connections:
 
@@ -78,7 +78,7 @@ Inverting the table for the Teensy's connections:
 | B1         | DQ6   |
 | B2         | DQ5   |
 | B3         | DQ4   |
-| F4         | A10   |
-| F5         | A9    |
-| F6         | A8    |
-| F7         | A7    |
+| F4         | A9    |
+| F5         | A8    |
+| F6         | A7    |
+| F7         | A6    |
