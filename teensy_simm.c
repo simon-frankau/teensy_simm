@@ -85,8 +85,10 @@ void simm_write(char addr, char val)
     CONTROL &= ~CAS;
 
     // Release RAS and CAS first, then data.
+    // I'm not sure this strictly matters given the timing diagrams.
     CONTROL |= RAS | CAS;
     DATA_EN &= ~(0x0f << D_SHIFT);
+    DATA_OUT = 0;
     CONTROL |= WE;
 }
 
@@ -151,18 +153,27 @@ int main(void)
     // Initialise USB for debug, but don't wait.
     usb_init();
 
-    while (1) {
+    for (int x = 0; 1; x++) {
         _delay_ms(250);
         led_on();
         _delay_ms(250);
         led_off();
         print("Boop\n");
-        simm_write(0, 3);
-        simm_write(0x55, 10);
-        char r1 = simm_read(0);
-        char r2 = simm_read(0x55);
-        phex(r1);
-        phex(r2);
+        // Write 16 bytes in different rows and columns...
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 4; j++) {
+                simm_write((i << 4) | j, i + j + x);
+            }
+        }
+        phex(x);
+        print("---");
+        // And try to read them back...
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                phex(simm_read((i << 4) | j));
+            }
+            pchar(',');
+        }
         print("\n");
     }
 }
