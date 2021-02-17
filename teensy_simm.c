@@ -44,8 +44,9 @@ static const char CAS = 2;
 static const char WE  = 4;
 
 // Data lines are B0-3.
-#define DATA    PORTB
-#define DATA_EN DDRB
+#define DATA_OUT PORTB
+#define DATA_IN  PINB
+#define DATA_EN  DDRB
 static const char D_SHIFT = 0;
 // Address lines are F4-7;
 #define ADDR    PORTF
@@ -75,7 +76,7 @@ void simm_write(char addr, char val)
     CONTROL &= ~RAS;
 
     // Set data.
-    DATA = val << D_SHIFT;
+    DATA_OUT = val << D_SHIFT;
     DATA_EN |= 0x0f << D_SHIFT;
     CONTROL &= ~WE;
 
@@ -103,9 +104,9 @@ char simm_read(char addr)
     CONTROL &= ~CAS;
 
     // Read the data.
-    char val = (DATA >> D_SHIFT) & 0x0f;
+    char val = (DATA_IN >> D_SHIFT) & 0x0f;
 
-    // Release RAS and CAS first.
+    // Release RAS and CAS.
     CONTROL |= RAS | CAS;
 
     return val;
@@ -157,9 +158,9 @@ int main(void)
         led_off();
         print("Boop\n");
         simm_write(0, 3);
-        simm_write(1, 10);
+        simm_write(0x55, 10);
         char r1 = simm_read(0);
-        char r2 = simm_read(1);
+        char r2 = simm_read(0x55);
         phex(r1);
         phex(r2);
         print("\n");
