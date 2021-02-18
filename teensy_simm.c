@@ -105,6 +105,11 @@ char simm_read(char addr)
     ADDR = col << A_SHIFT;
     CONTROL &= ~CAS;
 
+    // The input synchroniser has two flip-flops in series, delaying
+    // the value being read, so we need to insert a NOP before the result of
+    // the DRAM read will be available to an IN operation.
+    __builtin_avr_delay_cycles(1);
+
     // Read the data.
     char val = (DATA_IN >> D_SHIFT) & 0x0f;
 
@@ -139,14 +144,14 @@ static inline void led_off(void)
 
 int main(void)
 {
-    // Set a low speed so that we're well within the timing
-    // requirements of the DRAM
+    // Even at fastest speeds, a 70ns SIMM, like I have, can happily
+    // keep up...
     //
     // CPU prescale must be set with interrupts disabled. They're off
     // when the CPU starts.
     //
     // Don't forget to sync this with F_CPU in the Makefile.
-    cpu_prescale(CPU_250kHz);
+    cpu_prescale(CPU_16MHz);
     led_init();
     simm_init();
 
@@ -154,13 +159,10 @@ int main(void)
     usb_init();
 
     for (int x = 0; 1; x++) {
-        _delay_ms(250);
-        led_on();
-        _delay_ms(250);
+        _delay_ms(20);
         led_off();
-        print("Boop\n");
         // Write 16 bytes in different rows and columns...
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 simm_write((i << 4) | j, i + j + x);
             }
