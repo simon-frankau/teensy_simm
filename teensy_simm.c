@@ -142,6 +142,51 @@ static inline void led_off(void)
 // And the main program itself...
 //
 
+void write_mem(char c)
+{
+    // Write 256 bytes in different rows and columns...
+    for (int i = 0; i < 16; i++) {
+        for (int j = 0; j < 16; j++) {
+            simm_write((i << 4) | j, c);
+        }
+    }
+}
+
+void read_mem(void)
+{
+    // Read 256 bytes in different rows and columns...
+    for (int i = 0; i < 16; i++) {
+        for (int j = 0; j < 16; j++) {
+            phex1(simm_read((i << 4) | j));
+        }
+    }
+}
+
+// _delay_ms wants a constant, so... hack!
+void delay(char power)
+{
+#define D(i) case i: _delay_ms(1L << i); break
+    switch (power) {
+        D(0);
+        D(1);
+        D(2);
+        D(3);
+        D(4);
+        D(5);
+        D(6);
+        D(7);
+        D(8);
+        D(9);
+        D(10);
+        D(11);
+        D(12);
+        D(13);
+        D(14);
+        D(15);
+    }
+#undef D
+}
+
 int main(void)
 {
     // Even at fastest speeds, a 70ns SIMM, like I have, can happily
@@ -158,24 +203,29 @@ int main(void)
     // Initialise USB for debug, but don't wait.
     usb_init();
 
-    for (int x = 0; 1; x++) {
-        _delay_ms(20);
-        led_off();
-        // Write 16 bytes in different rows and columns...
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                simm_write((i << 4) | j, i + j + x);
-            }
+    // And give us some time to enable logging.
+    _delay_ms(1000);
+
+    // See how the memory decays without refresh.
+    while (1) {
+        // Write, wait 2^i ms, read, and report the read data. Do this
+        // having written 0s and 1s...
+        for (int i = 0; i < 16; i++) {
+            phex(i);
+            print(",");
+
+            led_on();
+            write_mem(0xff);
+            delay(i);
+            read_mem();
+            print(",");
+
+            led_off();
+            write_mem(0x00);
+            delay(i);
+            read_mem();
+
+            print("\n");
         }
-        phex(x);
-        print("---");
-        // And try to read them back...
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                phex(simm_read((i << 4) | j));
-            }
-            pchar(',');
-        }
-        print("\n");
     }
 }

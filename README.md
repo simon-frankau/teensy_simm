@@ -82,3 +82,17 @@ Inverting the table for the Teensy's connections:
 | F5         | A8    |
 | F6         | A7    |
 | F7         | A6    |
+
+## Results
+
+The little test that I've written right now write 256 bytes of data,
+waits 2^n ms for n up to 15, and then reads the data back, writing
+both 0xF and 0x0 (we only manage a nibble of data, remember?). The aim
+is to see the decay creeping in, given there's no refresh.
+
+Somewhat surprisingly to me (at the limited scale of writing 256
+bytes), I'm seeing no decay, even when waiting 16s between write and
+read. DRAM discharge is clearly much less of a thing than I thought!
+
+I think the next steps are to wire up more data and address pins, and
+see if I can observe decay over larger sample set.
