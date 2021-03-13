@@ -52,7 +52,7 @@ static const char WE  = 4;
 #define DATA_OUT PORTB
 #define DATA_IN  PINB
 #define DATA_EN  DDRB
-// Address lines are F4-7;
+// Address lines are F0-1 and 4-7;
 #define ADDR    PORTF
 #define ADDR_EN DDRF
 static const char A_SHIFT = 4;
@@ -74,11 +74,8 @@ void simm_init(void)
     PORTF |= 3;
 }
 
-void simm_write(char addr, char val)
+void simm_write(char row, char col, char val)
 {
-    char row = (addr >> 4) & 0x0f;
-    char col = addr & 0x0f;
-
     // Write row.
     ADDR = row << A_SHIFT;
     CONTROL &= ~RAS;
@@ -100,11 +97,8 @@ void simm_write(char addr, char val)
     CONTROL |= WE;
 }
 
-char simm_read(char addr)
+char simm_read(char row, char col)
 {
-    char row = (addr >> 4) & 0x0f;
-    char col = addr & 0x0f;
-
     // Write row.
     ADDR = row << A_SHIFT;
     CONTROL &= ~RAS;
@@ -161,7 +155,7 @@ void write_mem(char c)
     // Write 256 bytes in different rows and columns...
     for (int i = 0; i < 16; i++) {
         for (int j = 0; j < 16; j++) {
-            simm_write((i << 4) | j, c);
+            simm_write(i, j, c);
         }
     }
 }
@@ -171,7 +165,7 @@ void read_mem(void)
     // Read 256 bytes in different rows and columns...
     for (int i = 0; i < 16; i++) {
         for (int j = 0; j < 16; j++) {
-            phex1(simm_read((i << 4) | j));
+            phex(simm_read(i, j));
         }
     }
 }
@@ -242,10 +236,10 @@ int main(void)
         }
 #endif
         for (int i = 0; i < 0x100; i++) {
-            simm_write(i, i);
+            simm_write(i >> 4, i, i);
         }
         for (int i = 0; i < 0x100; i++) {
-            unsigned char c = simm_read(i);
+            unsigned char c = simm_read(i >> 4, i);
             if (c != i) {
                 print("??? ");
                 phex(c);
