@@ -30,17 +30,17 @@ example](https://www.pjrc.com/teensy/blinky.zip).
 | ----- | ----  | --------------------- | ---------- |
 | 1     | VCC   | +5 VDC                | VCC        |
 | 2     | /CAS  | Column Address Strobe | D1         |
-| 3     | DQ0   | Data 0                | Pull-up    |
+| 3     | DQ0   | Data 0                | B7         |
 | 4     | A0    | Address 0             | GND        |
 | 5     | A1    | Address 1             | GND        |
-| 6     | DQ1   | Data 1                | Pull-up    |
+| 6     | DQ1   | Data 1                | B6         |
 | 7     | A2    | Address 2             | GND        |
 | 8     | A3    | Address 3             | GND        |
 | 9     | GND   | Ground                | GND        |
-| 10    | DQ2   | Data 2                | Pull-up    |
-| 11    | A4    | Address 4             | GND        |
-| 12    | A5    | Address 5             | GND        |
-| 13    | DQ3   | Data 3                | Pull-up    |
+| 10    | DQ2   | Data 2                | B5         |
+| 11    | A4    | Address 4             | F0         |
+| 12    | A5    | Address 5             | F1         |
+| 13    | DQ3   | Data 3                | B4         |
 | 14    | A6    | Address 6             | F7         |
 | 15    | A7    | Address 7             | F6         |
 | 16    | DQ4   | Data 4                | B3         |
@@ -78,12 +78,20 @@ Inverting the table for the Teensy's connections:
 | B1         | DQ6   |
 | B2         | DQ5   |
 | B3         | DQ4   |
+| B4         | DQ3   |
+| B5         | DQ2   |
+| B6         | DQ1   |
+| B7         | DQ0   |
 | F4         | A9    |
 | F5         | A8    |
 | F6         | A7    |
 | F7         | A6    |
+| F1         | A5    |
+| F0         | A4    |
 
 ## Results
+
+### Old results
 
 The little test that I've written right now write 256 bytes of data,
 waits 2^n ms for n up to 15, and then reads the data back, writing
@@ -96,3 +104,26 @@ read. DRAM discharge is clearly much less of a thing than I thought!
 
 I think the next steps are to wire up more data and address pins, and
 see if I can observe decay over larger sample set.
+
+### Current state
+
+I'm wiring up more pins, and discovering new bugs. Hurrah!
+
+## Simplified changelog
+
+This project has been through a number of phases:
+
+ * Simply getting read/write cycles to work, with 4 address lines and
+   4 data lines. Getting AVR I/O right, basically.
+
+ * Getting beyond "it seems to read/write, just incorrectly", by
+   adding a delay on the read value to account for inputs going
+   through two latches to avoid metastability.
+
+ * Doing an initial test of 4 bits of data stored at 256 locations on
+   what the DRAM decay characteristics look like, and finding the test
+   DRAM decays slowly.
+
+ * Wiring up more pins (2 more address lines, 4 more data lines), and
+   doing a test, and discovering that the read value doesn't match the
+   written value at 16MHz, but does at 8MHz and below.

@@ -43,11 +43,10 @@ static const char RAS = 1;
 static const char CAS = 2;
 static const char WE  = 4;
 
-// Data lines are B0-3.
+// Data lines are B0-7.
 #define DATA_OUT PORTB
 #define DATA_IN  PINB
 #define DATA_EN  DDRB
-static const char D_SHIFT = 0;
 // Address lines are F4-7;
 #define ADDR    PORTF
 #define ADDR_EN DDRF
@@ -63,7 +62,11 @@ void simm_init(void)
     // Drive address lines.
     ADDR_EN |= 0x0f << A_SHIFT;
     // Do not drive data lines.
-    DATA_EN &= ~(0x0f << D_SHIFT);
+    DATA_EN &= 0x00;
+
+    // TODO: F0-F1 are address lines we're not using yet.
+    DDRF |= 3;
+    PORTF |= 3;
 }
 
 void simm_write(char addr, char val)
@@ -76,8 +79,8 @@ void simm_write(char addr, char val)
     CONTROL &= ~RAS;
 
     // Set data.
-    DATA_OUT = val << D_SHIFT;
-    DATA_EN |= 0x0f << D_SHIFT;
+    DATA_OUT = val;
+    DATA_EN |= 0xff;
     CONTROL &= ~WE;
 
     // Write col.
@@ -87,7 +90,7 @@ void simm_write(char addr, char val)
     // Release RAS and CAS first, then data.
     // I'm not sure this strictly matters given the timing diagrams.
     CONTROL |= RAS | CAS;
-    DATA_EN &= ~(0x0f << D_SHIFT);
+    DATA_EN &= 0x00;
     DATA_OUT = 0;
     CONTROL |= WE;
 }
@@ -111,7 +114,7 @@ char simm_read(char addr)
     __builtin_avr_delay_cycles(1);
 
     // Read the data.
-    char val = (DATA_IN >> D_SHIFT) & 0x0f;
+    char val = DATA_IN;
 
     // Release RAS and CAS.
     CONTROL |= RAS | CAS;
@@ -208,6 +211,7 @@ int main(void)
 
     // See how the memory decays without refresh.
     while (1) {
+#if 0
         // Write, wait 2^i ms, read, and report the read data. Do this
         // having written 0s and 1s...
         for (int i = 0; i < 16; i++) {
@@ -227,5 +231,21 @@ int main(void)
 
             print("\n");
         }
+#endif
+        for (int i = 0; i < 0x100; i++) {
+            simm_write(i, i);
+        }
+        for (int i = 0; i < 0x100; i++) {
+            unsigned char c = simm_read(i);
+            if (c != i) {
+                print("??? ");
+                phex(c);
+                print(" - ");
+                phex(i);
+                print("\n");
+            }
+        }
+        print("DONE\n");
+        _delay_ms(100);
     }
 }
