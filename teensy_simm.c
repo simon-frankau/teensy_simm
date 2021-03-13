@@ -55,7 +55,6 @@ static const char WE  = 4;
 // Address lines are F0-1 and 4-7;
 #define ADDR    PORTF
 #define ADDR_EN DDRF
-static const char A_SHIFT = 4;
 
 void simm_init(void)
 {
@@ -65,7 +64,7 @@ void simm_init(void)
     CONTROL_EN |= RAS | CAS | WE;
 
     // Drive address lines.
-    ADDR_EN |= 0x0f << A_SHIFT;
+    ADDR_EN |= 0xf3; // Bits 0-1, 4-7.
     // Do not drive data lines.
     DATA_EN &= 0x00;
 
@@ -74,10 +73,15 @@ void simm_init(void)
     PORTF |= 3;
 }
 
+inline char addr_to_f(char c) {
+    // Assemble bits 4-7 and bits 0-1.
+    return ((c & 0x3c) << 2) | (c & 0x03);
+}
+
 void simm_write(char row, char col, char val)
 {
     // Write row.
-    ADDR = row << A_SHIFT;
+    ADDR = addr_to_f(row);
     CONTROL &= ~RAS;
 
     // Set data.
@@ -86,7 +90,7 @@ void simm_write(char row, char col, char val)
     CONTROL &= ~WE;
 
     // Write col.
-    ADDR = col << A_SHIFT;
+    ADDR = addr_to_f(col);
     CONTROL &= ~CAS;
 
     // Release RAS and CAS first, then data.
@@ -100,11 +104,11 @@ void simm_write(char row, char col, char val)
 char simm_read(char row, char col)
 {
     // Write row.
-    ADDR = row << A_SHIFT;
+    ADDR = addr_to_f(row);
     CONTROL &= ~RAS;
 
     // Write col.
-    ADDR = col << A_SHIFT;
+    ADDR = addr_to_f(col);
     CONTROL &= ~CAS;
 
     // The input synchroniser has two flip-flops in series, delaying
@@ -150,22 +154,22 @@ static inline void led_off(void)
 // And the main program itself...
 //
 
-void write_mem(char c)
+void write_mem(char v)
 {
-    // Write 256 bytes in different rows and columns...
-    for (int i = 0; i < 16; i++) {
-        for (int j = 0; j < 16; j++) {
-            simm_write(i, j, c);
+    // Write 4K bytes in different rows and columns...
+    for (int r = 0; r < 0x40; r++) {
+        for (int c = 0; c < 0x40; c++) {
+            simm_write(r, c, v);
         }
     }
 }
 
 void read_mem(void)
 {
-    // Read 256 bytes in different rows and columns...
-    for (int i = 0; i < 16; i++) {
-        for (int j = 0; j < 16; j++) {
-            phex(simm_read(i, j));
+    // Read 4K bytes in different rows and columns...
+    for (int r = 0; r < 0x40; r++) {
+        for (int c = 0; c < 0x40; c++) {
+            phex(simm_read(r, c));
         }
     }
 }
@@ -214,7 +218,7 @@ int main(void)
 
     // See how the memory decays without refresh.
     while (1) {
-#if 0
+#if 1
         // Write, wait 2^i ms, read, and report the read data. Do this
         // having written 0s and 1s...
         for (int i = 0; i < 16; i++) {
@@ -234,21 +238,26 @@ int main(void)
 
             print("\n");
         }
-#endif
-        for (int i = 0; i < 0x100; i++) {
-            simm_write(i >> 4, i, i);
+#else
+        for (int r = 0; r < 0x40; r++) {
+            for (int c = 0; c < 0x40; c++) {
+                simm_write(r, c, r + (c << 1));
+            }
         }
-        for (int i = 0; i < 0x100; i++) {
-            unsigned char c = simm_read(i >> 4, i);
-            if (c != i) {
-                print("??? ");
-                phex(c);
-                print(" - ");
-                phex(i);
-                print("\n");
+        for (int r = 0; r < 0x10; r++) {
+            for (int c = 0; c < 0x10; c++) {
+                unsigned char v = simm_read(r, c);
+                if (v != (r + (c << 1))) {
+                    print("??? ");
+                    phex(v);
+                    print(" - ");
+                    phex(r + (c << 1));
+                    print("\n");
+                }
             }
         }
         print("DONE\n");
         _delay_ms(100);
+#endif
     }
 }

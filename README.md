@@ -59,13 +59,11 @@ example](https://www.pjrc.com/teensy/blinky.zip).
 | 29    | DP    | Data Parity In        | Pull-up    |
 | 30    | VCC   | +5 VDC                | VCC        |
 
-Only wiring up DQ4-DQ7, and A6-A9. Testing that the thing works in
-principle, don't need to actually access the full memory. Why the
-higher pins? They're the ones nearer the Teensy, so I can use more of
-the shorter wires. :)
+I'm only wiring up A4-A9, since the Teensy has limited easy-to-access
+pins, and I'm a little lazy for a proof-of-concept.
 
 I avoided wiring up A11/A10, since my test SIMM is a 1MB (parity!)
-SIMM, populated with 2x 422400-70, 1x 421000-70 DRAM chips. SIMMs.
+SIMM, populated with 2x 422400-70, 1x 421000-70 DRAM chips.
 
 Inverting the table for the Teensy's connections:
 
@@ -91,23 +89,25 @@ Inverting the table for the Teensy's connections:
 
 ## Results
 
-### Old results
+The little test that I've written right now writes 4KB of data waits
+2^n ms for n up to 15, and then reads the data back, writing both 0xF
+and 0x0 (we only manage a nibble of data, remember?). The aim is to
+see the decay creeping in, given there's no refresh.
 
-The little test that I've written right now write 256 bytes of data,
-waits 2^n ms for n up to 15, and then reads the data back, writing
-both 0xF and 0x0 (we only manage a nibble of data, remember?). The aim
-is to see the decay creeping in, given there's no refresh.
+At room temperature, I'mseeing no decay, even when waiting 16s between
+write and read. DRAM discharge is clearly much less of a thing than I
+thought!
 
-Somewhat surprisingly to me (at the limited scale of writing 256
-bytes), I'm seeing no decay, even when waiting 16s between write and
-read. DRAM discharge is clearly much less of a thing than I thought!
+However, when I wave the hair-dryer at the DRAM, I can see visible
+decay, with 0s turning to 1s, at the multi-second time horizon. So,
+it's clearly very temperature-correlated. I'd like to gather more
+data, but I'm going to need a stable temperature-controlled
+environment first.
 
-I think the next steps are to wire up more data and address pins, and
-see if I can observe decay over larger sample set.
+### Future work
 
-### Current state
-
-I'm wiring up more pins, and discovering new bugs. Hurrah!
+Get a temperature-controlled environment, and collect data.
+Demonstrate that refreshing the DRAM makes decay go away.
 
 ## Simplified changelog
 
@@ -115,16 +115,16 @@ This project has been through a number of phases:
 
  * Simply getting read/write cycles to work, with 4 address lines and
    4 data lines. Getting AVR I/O right, basically.
-
  * Getting beyond "it seems to read/write, just incorrectly", by
    adding a delay on the read value to account for inputs going
    through two latches to avoid metastability.
-
  * Doing an initial test of 4 bits of data stored at 256 locations on
    what the DRAM decay characteristics look like, and finding the test
-   DRAM decays slowly.
-
+   DRAM doesn't show decay at room temperature, even at the
+   multi-second time horizon.
  * Wiring up more pins (2 more address lines, 4 more data lines), and
    doing a test, and discovering that the read value doesn't match the
    written value at 16MHz, but does at 8MHz and below. Discover the
    need to put in more delay.
+ * Rerun earlier tests, still see no decay, try a hairdryer on the
+   RAM, see decay!
