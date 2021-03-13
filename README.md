@@ -126,4 +126,5 @@ This project has been through a number of phases:
 
  * Wiring up more pins (2 more address lines, 4 more data lines), and
    doing a test, and discovering that the read value doesn't match the
-   written value at 16MHz, but does at 8MHz and below.
+   written value at 16MHz, but does at 8MHz and below. Discover the
+   need to put in more delay.

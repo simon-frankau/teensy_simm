@@ -27,6 +27,11 @@ static const char CPU_250kHz = 0x06;
 static const char CPU_125kHz = 0x07;
 static const char CPU_62kHz  = 0x08;
 
+// Don't forget to sync this with F_CPU in the Makefile.
+//
+// A macro as apparently you can't initialise one const with another?!
+#define CLOCK_SPEED CPU_16MHz
+
 static inline void cpu_prescale(char i)
 {
     CLKPR = 0x80;
@@ -111,7 +116,13 @@ char simm_read(char addr)
     // The input synchroniser has two flip-flops in series, delaying
     // the value being read, so we need to insert a NOP before the result of
     // the DRAM read will be available to an IN operation.
-    __builtin_avr_delay_cycles(1);
+    if (CLOCK_SPEED == CPU_16MHz) {
+        // One cycle seems to be insufficient at 16MHz, perhaps due to the
+        // time it takes to perform the read.
+        __builtin_avr_delay_cycles(2);
+    } else {
+        __builtin_avr_delay_cycles(1);
+    }
 
     // Read the data.
     char val = DATA_IN;
@@ -197,9 +208,7 @@ int main(void)
     //
     // CPU prescale must be set with interrupts disabled. They're off
     // when the CPU starts.
-    //
-    // Don't forget to sync this with F_CPU in the Makefile.
-    cpu_prescale(CPU_16MHz);
+    cpu_prescale(CLOCK_SPEED);
     led_init();
     simm_init();
 
