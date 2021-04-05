@@ -89,25 +89,26 @@ Inverting the table for the Teensy's connections:
 
 ## Results
 
-The little test that I've written right now writes 4KB of data waits
-2^n ms for n up to 15, and then reads the data back, writing both 0xF
-and 0x0 (we only manage a nibble of data, remember?). The aim is to
-see the decay creeping in, given there's no refresh.
+I've written software to run a test cycle over 4KB of data (6 address
+lines, multiplexed to give a 12-bit address), with 8 address lines.
+The cycle writes data, waits *n* milliseconds, and reads it back. I've
+observed that only 0s decay to 1s (presumably 0s are stored as a
+charge in the DRAM cells), so I only write 0s and read back the
+contents. I do this for *n = sqrt(2)^i* ms delays, which is like *2^i*
+ms delays, only with extra intermediate steps.
 
-At room temperature, I'mseeing no decay, even when waiting 16s between
-write and read. DRAM discharge is clearly much less of a thing than I
-thought!
-
-However, when I wave the hair-dryer at the DRAM, I can see visible
-decay, with 0s turning to 1s, at the multi-second time horizon. So,
-it's clearly very temperature-correlated. I'd like to gather more
-data, but I'm going to need a stable temperature-controlled
-environment first.
+As I've noticed decay rate depends on temperature (I was seeing no
+noticeable decay at room temperature, but it really picked up when I
+applied a hairdryer), I've run a bunch of test cycles at the
+temperatures of 20, 25, 30, 35 and 40 degrees Celsius, using a
+thermostat intended for reptiles. The raw output is in the "results"
+directory, one file per temperature.
 
 ### Future work
 
-Get a temperature-controlled environment, and collect data.
-Demonstrate that refreshing the DRAM makes decay go away.
+ * Analyse the collected data
+ * Consider collecting data over a wider temperature range
+ * Demonstrate that refreshing the DRAM makes decay go away.
 
 ## Simplified changelog
 
@@ -128,3 +129,5 @@ This project has been through a number of phases:
    need to put in more delay.
  * Rerun earlier tests, still see no decay, try a hairdryer on the
    RAM, see decay!
+ * Run tests at a variety of delays, and a range of temperatures from
+   20 to 40 degrees Celsius.
