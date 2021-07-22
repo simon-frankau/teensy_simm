@@ -2,3 +2,5 @@
 obj/*
 out/*
 .dep/*
+tools/Cargo.lock
+tools/target/*
