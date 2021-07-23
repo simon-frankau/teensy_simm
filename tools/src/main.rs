@@ -8,6 +8,8 @@
 extern crate regex;
 
 use regex::Regex;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 
@@ -20,7 +22,6 @@ struct Entry {
 
 fn to_entry(s: &str) -> Entry {
     let entry = s.split('\n').collect::<Vec<_>>();
-    eprintln!("Thing: {}", s);
 
     // Should be 3 lines, but allow an extra blank line at the end of
     // the file.
@@ -63,9 +64,114 @@ fn to_entry(s: &str) -> Entry {
     Entry{ delay: delay, corrupted: locations, bit_count: num_diffs }
 }
 
+// Generate a table of fraction of time corrupted, vs. delay and
+// location. The idea is to see if it's always the same locations that
+// are most corruptable, and that there's some threshold time at which
+// their RC constant is too low, and they just corrupt.
+fn generate_corruptability(stats: &[Entry]) {
+    // We're going to be inefficient because the data set is small,
+    // and it's easier that way...
+
+    // Start by collecting all known corrupted addresses:
+    let corrupted: HashSet<String> = stats
+        .iter()
+        .map(|stat| stat.corrupted.iter().map(|s| s.to_string()))
+        .flatten()
+        .collect();
+
+    // And collect all delays at which corruption occurs:
+    let delays: HashSet<usize> = stats
+        .iter()
+        .filter(|e| !e.corrupted.is_empty())
+        .map(|e| e.delay)
+        .collect();
+
+    // Build entries for all pairs.
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+    struct Key {
+        delay: usize,
+        location: String,
+    };
+    #[derive(Clone, Debug)]
+    struct Value {
+        numerator: usize,
+        denominator: usize
+    };
+
+    let mut data: HashMap<Key, Value> = HashMap::new();
+    for addr in corrupted.iter() {
+        for delay in delays.iter() {
+            data.insert(Key { delay: *delay, location: addr.to_string() },
+                        Value { numerator: 0, denominator: 0 });
+        }
+    }
+
+    // And populate the numerators and denominators.
+    for entry in stats.iter() {
+        // Numerators: Does the address occur in the corrupted list?
+        for addr in entry.corrupted.iter() {
+            data
+                .get_mut(&Key { delay: entry.delay, location: addr.to_string() })
+                .unwrap()
+                .numerator += 1;
+        }
+        // Denominator: All addresses are included, unless they fall
+        // off the upper end of the corrupted list, in which case the
+        // numerator isn't bumped, so we shouldn't bump the denominator.
+        let max_recorded: &str = if entry.corrupted.len() == 31 {
+            &entry.corrupted[30]
+        } else {
+            "FFFFFFFF"
+        };
+        for (k, v) in data.iter_mut() {
+            if k.delay == entry.delay && k.location.as_str() <= max_recorded {
+                v.denominator += 1;
+            }
+        }
+    }
+
+    // Now we want to order the addresses by when they first appear.
+    let addrs_in_order = {
+        let mut addr_map = HashMap::new();
+        for entry in stats.iter() {
+            for addr in entry.corrupted.iter() {
+                // Update the first usgae time if it's non-existent, or greater
+                // than the currently-recorded value.
+                if addr_map.get(addr).map_or(true, |&usage| usage > entry.delay) {
+                    addr_map.insert(addr.to_string(), entry.delay);
+                }
+            }
+        }
+        let mut sorted_addrs = addr_map
+            .into_iter()
+            .map(|(k, v)| (v, k))
+            .collect::<Vec<(usize, String)>>();
+        sorted_addrs.sort();
+        sorted_addrs.into_iter().map(|(_, v)| v).collect::<Vec<String>>()
+    };
+
+    // We've got the data, we've got the delays and addresses, let's
+    // print the table!
+
+    // Header row.
+    let mut delays_vec = delays.iter().map(|x| *x).collect::<Vec<usize>>();
+    delays_vec.sort();
+    let delays_strings = delays_vec.iter().map(|&x| x.to_string()).collect::<Vec<String>>();
+    println!(", {}", delays_strings.join(", "));
+
+    // Row for each address.
+    for addr in addrs_in_order.iter() {
+        print!("{}", addr);
+        for delay in delays_vec.iter() {
+            let entry = data.get(&Key { delay: *delay, location: addr.to_string() }).unwrap();
+            print!(", {}", entry.numerator as f64 / entry.denominator as f64);
+        }
+        println!();
+    }
+}
+
 fn main() {
     let mut args = env::args();
-    println!("{:?}", args);
     assert_eq!(args.len(), 2);
     let file_name = args.nth(1).unwrap();
 
@@ -76,5 +182,5 @@ fn main() {
         .map(to_entry)
         .collect();
 
-    print!("Entries: {:?}", entries);
+    generate_corruptability(&entries);
 }
