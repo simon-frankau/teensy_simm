@@ -135,17 +135,22 @@ fn generate_corruptability(stats: &[Entry]) {
         let mut addr_map = HashMap::new();
         for entry in stats.iter() {
             for addr in entry.corrupted.iter() {
-                // Update the first usgae time if it's non-existent, or greater
-                // than the currently-recorded value.
-                if addr_map.get(addr).map_or(true, |&usage| usage > entry.delay) {
-                    addr_map.insert(addr.to_string(), entry.delay);
+                // Update the first usgae time if it's non-existent,
+                // or greater than the currently-recorded value. Sort
+                // secondarily on fraction of time corrupted.
+
+                if addr_map.get(addr).map_or(true, |&(usage, _)| usage > entry.delay) {
+                    let d = data.get(&Key { delay: entry.delay, location: addr.to_string() }).unwrap();
+                    // Integer to keep sortable.
+                    let fraction = 100 - d.numerator * 100 / d.denominator;
+                    addr_map.insert(addr.to_string(), (entry.delay, fraction));
                 }
             }
         }
         let mut sorted_addrs = addr_map
             .into_iter()
             .map(|(k, v)| (v, k))
-            .collect::<Vec<(usize, String)>>();
+            .collect::<Vec<((usize, usize), String)>>();
         sorted_addrs.sort();
         sorted_addrs.into_iter().map(|(_, v)| v).collect::<Vec<String>>()
     };
