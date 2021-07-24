@@ -104,9 +104,24 @@ temperatures of 20, 25, 30, 35 and 40 degrees Celsius, using a
 thermostat intended for reptiles. The raw output is in the "results"
 directory, one file per temperature.
 
+Then, using the tooling I've written in the "tools" directory, I've
+generated CSVs of fraction of times a location decayed, based on
+address and delay between reading and writing. These are stored in the
+"processed_results" directory, and I've uploaded them to a [Google
+sheet](https://docs.google.com/spreadsheets/d/17J4vXwe0mxszkWyo406M8UlAduA3VVvJ1ZQwqvPf7Q4/edit).
+
+The results show more-or-less what you'd expect - certain locations
+are more vulnerable to decay, and decay fairly consistently - if
+they've decayed at time *n*, they'll also decay for times > *n*, and
+they decay more quickly at higher temperatures.
+
+At this point, I'm not interested in analysing the individual memory
+locations, but maybe building a model for the overall population of
+memory cells...
+
 ### Future work
 
- * Analyse the collected data
+ * Analyse overall bit decay rate data, build a model.
  * Consider collecting data over a wider temperature range
  * Demonstrate that refreshing the DRAM makes decay go away.
 
@@ -131,3 +146,4 @@ This project has been through a number of phases:
    RAM, see decay!
  * Run tests at a variety of delays, and a range of temperatures from
    20 to 40 degrees Celsius.
+ * Extract CSVs from the results, generated tables.
