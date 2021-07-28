@@ -13,6 +13,9 @@ use std::collections::HashSet;
 use std::env;
 use std::fs;
 
+// The testing was done over 4K bytes.
+const TESTED_BITS: usize = 4096 * 8;
+
 #[derive(Clone, Debug)]
 struct Entry {
        delay: usize,
@@ -175,6 +178,34 @@ fn generate_corruptability(stats: &[Entry]) {
     }
 }
 
+// Generate a very simple table of average bit flip rates per decay period.
+fn generate_flip_rates(stats: &[Entry])
+{
+    // Store numerator and denominator, per delay.
+    let mut flip_rates: HashMap<usize, (usize, usize)> = HashMap::new();
+
+    // Collect data.
+    for entry in stats.iter() {
+        if !flip_rates.contains_key(&entry.delay) {
+            flip_rates.insert(entry.delay, (0, 0));
+        }
+        let (num, denom) = flip_rates.get_mut(&entry.delay).unwrap();
+        *num += entry.bit_count;
+        *denom += TESTED_BITS;
+    }
+
+    // Sort it.
+    let mut flip_rates_vec = flip_rates
+        .iter()
+        .map(|(&delay, (num, denom))| (delay, *num as f64 / *denom as f64))
+        .collect::<Vec<(usize, f64)>>();
+    flip_rates_vec.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+    // Print it.
+    println!("{}", flip_rates_vec.iter().map(|(delay, _)| delay.to_string()).collect::<Vec<String>>().join(","));
+    println!("{}", flip_rates_vec.iter().map(|(_, frac)| frac.to_string()).collect::<Vec<String>>().join(","));
+}
+
 fn main() {
     let mut args = env::args();
     assert_eq!(args.len(), 2);
@@ -188,4 +219,6 @@ fn main() {
         .collect();
 
     generate_corruptability(&entries);
+    println!();
+    generate_flip_rates(&entries);
 }

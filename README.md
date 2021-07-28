@@ -1,4 +1,4 @@
-# Managing a SIMM from a Teensy 2.0
+# Managing a SIMM from a Teensy 2.0, to understand DRAM decay
 
 ## What?
 
@@ -115,15 +115,90 @@ are more vulnerable to decay, and decay fairly consistently - if
 they've decayed at time *n*, they'll also decay for times > *n*, and
 they decay more quickly at higher temperatures.
 
-At this point, I'm not interested in analysing the individual memory
-locations, but maybe building a model for the overall population of
-memory cells...
+Changing tack, I decided to look at the overall bit decay stats,
+rather than individual memory locations. I built a model (described
+below), and... it roughly fit, although the data was, quite frankly,
+massively inadequate. Maybe I'll collect more sometime.
+
+A couple of core points are pretty clear, though. Despite requiring
+refresh cycles on the order of milliseconds, in practice the DRAM
+cells of a '90s SIMM actually preserve their contents at room
+temperature for a long time - 99% of cells will retain their contents
+for a minute! This more than explains the result that seems to
+surprise people, that turning a computer on and off tends to leave
+DRAM state untouched.
+
+The other point is that we do, just, see the strong effect of
+temperature. The decay at 40 degrees is much faster than lower
+temperatures, and it would be fascinating to collect data for slightly
+higher temperatures. If only I had the appropriate tools. :)
 
 ### Future work
 
- * Analyse overall bit decay rate data, build a model.
- * Consider collecting data over a wider temperature range
+ * Collect more data over an extended time period, to get into the
+   centre of the distribution and improve the model.
+ * Consider collecting data over a wider temperature range (how?).
  * Demonstrate that refreshing the DRAM makes decay go away.
+
+## Modeling decay rate
+
+Rather than build an equation to fit the data out of absolutely
+nothing, I wanted to construct a simple model and see how well it
+fits.
+
+We can start with the idea that a DRAM cell is a capacitor with some
+RC constant, and that decay occurs if the voltage on it drops below
+some threshold. In other words, the cell decays if *e^-RCt < X*, for
+its *RC* constant and some threshold level *X*. *RC*, in turn, is going
+to be some distribution across all the bits in the memory. A
+temperature-dependent distribution, since the data clearly shows
+faster decay at higher temperatures.
+
+This distribution is probably going to be related to a normal
+distribution, representing variability due to manufacturing. However,
+the *RC* constant can never go below zero, so I'm gonna model the *RC*
+value as a log normal distribution - *e^N(mu(T), sigma^2(T))*, where
+the mean and variance are functions of temperature.
+
+Putting it all together, the fraction of memory cells decaying is:
+
+*E(I(e^-(e^N)t < X))*
+
+where *E* is expectation, *I* is indicator function, and *N* our
+normally distributed values. This can be rearranged:
+
+*E(I((e^N)t > -ln X))*
+
+*E(I(N > ln (-ln X) - ln t))*
+
+*E(I(N < c + ln t)* (symmetry of *N*)
+
+for some constant c.
+
+By tweaking the mean and variance of the normal distribution, the
+decay fraction expectation is the cumulative normal distribution up to
+*ln(t)*.
+
+If this model works, plotting the inverse CDF against log time should
+give a nice, straight graph for each temperature. I did this for the
+data I gathered in [this
+sheet](https://docs.google.com/spreadsheets/d/17J4vXwe0mxszkWyo406M8UlAduA3VVvJ1ZQwqvPf7Q4/edit#gid=1629776164),
+and got some pretty straight lines. Hurrah!
+
+To be honest, though, it's hardly conclusive. (Boo.) Plotting inverse
+normal distribution against (non-log) time looks like a slightly
+better fit, and simply plotting log fraction decayed vs. time is a
+pretty good fit. I'm trying to fit a distribution against the very
+tail of the distribution - most of the points are at least 3 standard
+deviations from the mean. That's not good.
+
+Having confidence in the model, let alone trying to fit parameters,
+seems extremely foolish given the data I've collected. Moreover, we
+know there's a strong temperature effect, but that data also looks
+extremely dodgy to extrapolate. One slide deck from a researcher
+suggested the decay rate was proportional to *T^4*, which makes the
+curve very steep, but with my equipment going beyond 40 degrees is
+tough.
 
 ## Simplified changelog
 
