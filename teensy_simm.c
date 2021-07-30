@@ -198,10 +198,10 @@ unsigned read_mem(char v)
     return bit_count;
 }
 
-void delay(unsigned ms)
+void delay(unsigned s)
 {
-    for (int i = 0; i < ms; ++i) {
-        _delay_ms(1);
+    for (int i = 0; i < s; ++i) {
+        _delay_ms(1000);
     }
 }
 
@@ -245,15 +245,15 @@ void test_read_write(void)
 }
 
 // Test bit flips from the given pattern and delay
-void test_decays(char pattern, unsigned delay_millis)
+void test_decays(char pattern, unsigned delay_seconds)
 {
     print("Delay: ");
-    pdecimal(delay_millis);
-    print(", Pattern: ");
+    pdecimal(delay_seconds);
+    print("000, Pattern: ");
     phex(pattern);
     print("\n");
     write_mem(pattern);
-    delay(delay_millis);
+    delay(delay_seconds);
     unsigned diffs = read_mem(pattern);
     print("\nDiffs: ");
     pdecimal(diffs);
@@ -280,20 +280,20 @@ int main(void)
     // See how the memory decays without refresh.
     while (1) {
 #if TEST_DECAYS
-        // Write, wait 2^i ms, read, and report the read data. Do this
-        // having written 0s and 1s...
-        for (int i = 0; i < 16; i++) {
-            int delay_ms = 1L << i;
+        // Write, wait 2^i seconds, read, and report the read data.
+        // Go up to around 40 minutes (2048 seconds).
+        for (int i = 0; i < 12; i++) {
+            int delay_s = 1L << i;
             led_on();
-            test_decays(0x00, delay_ms);
+            test_decays(0x00, delay_s);
             led_off();
 // My SIMM only decays 0 -> 1, so this is a waste of time.
 #ifdef ALSO_TEST_FF
-            test_decays(0xff, delay_ms);
+            test_decays(0xff, delay_s);
 #else
             // Instead, let's fill in the sparse time axis with more data.
-            delay_ms = 46340 >> (15 - i); // Sqrt 2 * 2^15.
-            test_decays(0x00, delay_ms);
+            delay_s = 46340 >> (15 - i); // Sqrt 2 * 2^15.
+            test_decays(0x00, delay_s);
 #endif
         }
 #else

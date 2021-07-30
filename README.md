@@ -118,25 +118,32 @@ they decay more quickly at higher temperatures.
 Changing tack, I decided to look at the overall bit decay stats,
 rather than individual memory locations. I built a model (described
 below), and... it roughly fit, although the data was, quite frankly,
-massively inadequate. Maybe I'll collect more sometime.
+massively inadequate. See the section "Modelling decay rate".
 
-A couple of core points are pretty clear, though. Despite requiring
-refresh cycles on the order of milliseconds, in practice the DRAM
-cells of a '90s SIMM actually preserve their contents at room
-temperature for a long time - 99% of cells will retain their contents
-for a minute! This more than explains the result that seems to
-surprise people, that turning a computer on and off tends to leave
-DRAM state untouched.
+I don't have the tools to extend the temperature range, but I could
+collect data with longer time delays to improve the modeling, so
+that's what I did. The results of this are in the "Modeling decay
+rates #2" section.
 
-The other point is that we do, just, see the strong effect of
-temperature. The decay at 40 degrees is much faster than lower
-temperatures, and it would be fascinating to collect data for slightly
-higher temperatures. If only I had the appropriate tools. :)
+You can read more there, but the summary is:
+
+ * Despite demanding a 128ms refresh cycle, the median decay time at
+   room temperature is nearly 3 minutes! This explains the result that
+   surprises many, that you can power cycle a computer and (assuming
+   the RAM isn't deliberately cleared) most of the memory contents
+   will be intact.
+
+ * There is a strong temperature effect, decreasing decay time. We
+   only really see this kicking in hard at the edge of our data, at 40
+   degrees, but it looks like the effect grows strongly with
+   temperature.
 
 ### Future work
 
- * Collect more data over an extended time period, to get into the
-   centre of the distribution and improve the model.
+While the following are future possible extensions, without a
+convenient way to extend the temperature range (no, I'm not allowed to
+put circuitry in the oven), I'm going to call it done for now.
+
  * Consider collecting data over a wider temperature range (how?).
  * Demonstrate that refreshing the DRAM makes decay go away.
 
@@ -160,6 +167,9 @@ the *RC* constant can never go below zero, so I'm gonna model the *RC*
 value as a log normal distribution - *e^N(mu(T), sigma^2(T))*, where
 the mean and variance are functions of temperature.
 
+Without foundation, and almost certainly incorrectly, we assume the
+statistics for the individual bits are i.i.d.
+
 Putting it all together, the fraction of memory cells decaying is:
 
 *E(I(e^-(e^N)t < X))*
@@ -181,24 +191,74 @@ decay fraction expectation is the cumulative normal distribution up to
 
 If this model works, plotting the inverse CDF against log time should
 give a nice, straight graph for each temperature. I did this for the
-data I gathered in [this
+data I gathered in the "Decay Rates" tab of [this
 sheet](https://docs.google.com/spreadsheets/d/17J4vXwe0mxszkWyo406M8UlAduA3VVvJ1ZQwqvPf7Q4/edit#gid=1629776164),
 and got some pretty straight lines. Hurrah!
 
-To be honest, though, it's hardly conclusive. (Boo.) Plotting inverse
-normal distribution against (non-log) time looks like a slightly
-better fit, and simply plotting log fraction decayed vs. time is a
-pretty good fit. I'm trying to fit a distribution against the very
-tail of the distribution - most of the points are at least 3 standard
-deviations from the mean. That's not good.
+To be honest, though, based on this data, it's hardly conclusive.
+(Boo.) Plotting inverse normal distribution against (non-log) time
+looks like a slightly better fit, and simply plotting log fraction
+decayed vs. time is a pretty good fit. I'm trying to fit a
+distribution against the very tail of the distribution - most of the
+points are at least 3 standard deviations from the mean. That's not
+good.
 
 Having confidence in the model, let alone trying to fit parameters,
-seems extremely foolish given the data I've collected. Moreover, we
+seems extremely foolish given the data I'd collected. Moreover, we
 know there's a strong temperature effect, but that data also looks
 extremely dodgy to extrapolate. One slide deck from a researcher
 suggested the decay rate was proportional to *T^4*, which makes the
 curve very steep, but with my equipment going beyond 40 degrees is
 tough.
+
+## Modeling decay rates #2
+
+In order to have a better go at validating the model
+(unscientifically), I collected more data. Not wanting to set up a
+thermostatic environment again, and wanting to take limited time, I
+only did so at room temperature, but I extended the delays supported
+up to 2896 seconds, finding the decay fraction for delays of powers of
+sqrt(2) seconds.
+
+For this run, the raw data is in `results/res_20_ext.txt`, and the
+processed data is in `processed_results/res_20_ext.cs`. The data was
+then copied into the "Extended decay rates" tab of the sheet.
+
+Plotting raw decay fraction versus write-to-read delay gives a nice
+sigmoid curve that suggests something normal-like for the underlying
+distribution. I took the inverse normal distribution of the decay
+fractions, and plotted it against linear time and log time, to get an
+idea of whether a normal or a log-normal distribution works better. I
+really wanted to see a nice linear region around the centre of the
+distribution (0 standard deviations), where the data is least noisy (a
+few bits more or less decaying won't change the standard deviation
+numbers much), and fraction vs. log time looks pretty linear in that
+region, certainly better than the linear-time plot. I feel my model,
+using log normal, is validated! (I told you, didn't I, that this isn't
+very scientific?!)
+
+However, for the shorter time scale, and only a few bit decays, the
+linear trend clearly doesn't extrapolate. I *could* put this down to
+just a bit of noisiness - just a few bits difference (I estimate
+roughly 10 out of 32k) would make the whole chart linear. However,
+this feels like cheating. What I suspect is that, in the long tail,
+there's something that means there's a few more weak bits than you'd
+otherwise expect.
+
+These fat tails mean the model I'm producing shouldn't be used for
+deciding refresh rates. If you want to avoid unexpected single bit
+flips across the whole of your memory, you need to understand the
+fatness of the tails, and be very conservative.
+
+For this exercise, I want to characterise the average cell (Why? No
+practical reason, it's more to just demystify their behaviour. If I
+use DRAM I'll be following the same refresh cycle as everyone else!).
+In the sheet, I've done a linear regression on the region around the
+median, and found the modal/median decay time to be 3 minutes, with
+99.7% of cells (3 standard deviations) between 1.0 and 8.5 minutes.
+Not bad when the documented max refresh time for a cell is something
+like 128ms. Admittedly this is at room temperature, and decays happen
+much faster at the temperatures running computers tend to see.
 
 ## Simplified changelog
 
@@ -222,3 +282,6 @@ This project has been through a number of phases:
  * Run tests at a variety of delays, and a range of temperatures from
    20 to 40 degrees Celsius.
  * Extract CSVs from the results, generated tables.
+ * Run tests at room temperature with longer delays, in order to get
+   more data to validate the model. Validate the model (time decay
+   only, still no temperature modelling).
